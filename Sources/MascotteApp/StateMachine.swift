@@ -5,6 +5,11 @@ final class StateMachine {
     private(set) var currentState: PetState
     private var pendingTransition: DispatchWorkItem?
 
+    /// Fired whenever the current state changes, including auto-transitions
+    /// back to idle. Lets observers (e.g. WanderController) know when to
+    /// start/stop without polling `currentState`.
+    var onStateChange: ((PetState) -> Void)?
+
     init(engine: SpriteEngine, initialState: PetState = .waving) {
         self.engine = engine
         self.currentState = initialState
@@ -22,6 +27,7 @@ final class StateMachine {
         currentState = state
         engine.setRow(state.row, frameCount: state.frameCount)
         scheduleAutoTransition(for: state)
+        onStateChange?(state)
     }
 
     private func scheduleAutoTransition(for state: PetState) {

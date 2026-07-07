@@ -17,6 +17,15 @@ final class SpriteView: NSView {
 
 final class PetWindow: NSPanel {
     let spriteView: SpriteView
+    weak var stateMachine: StateMachine?
+
+    var willBeginDrag: (() -> Void)?
+    var didEndDrag: ((NSPoint) -> Void)?
+
+    private var dragStartMouseLocation: NSPoint?
+    private var dragStartWindowOrigin: NSPoint?
+    private var stateBeforeDrag: PetState?
+    private var isDragging = false
 
     init(cellSize: CGSize) {
         let rect = NSRect(origin: .zero, size: cellSize)
@@ -35,19 +44,62 @@ final class PetWindow: NSPanel {
         hasShadow = false
         level = .floating
         collectionBehavior = [.canJoinAllSpaces, .ignoresCycle, .fullScreenAuxiliary]
-        isMovableByWindowBackground = true
+        // Dragging is handled manually below (mouseDown/mouseDragged/mouseUp) so we can
+        // track direction and know exactly when a drag starts/ends. isMovable is disabled
+        // so nothing but our own code (drag + wander) ever repositions the window.
+        isMovableByWindowBackground = false
+        isMovable = false
 
         contentView = view
 
-        centerOnActiveScreen()
+        setFrameOrigin(PositionStore.loadOrigin(windowSize: rect.size))
     }
 
-    private func centerOnActiveScreen() {
-        let primaryScreen = NSScreen.screens.first { $0.frame.origin == .zero }
-        guard let screen = primaryScreen ?? NSScreen.main else { return }
-        let screenFrame = screen.visibleFrame
-        let x = screenFrame.midX - frame.width / 2
-        let y = screenFrame.midY - frame.height / 2
-        setFrameOrigin(NSPoint(x: x, y: y))
+    override func mouseDown(with event: NSEvent) {
+        isDragging = true
+        dragStartMouseLocation = NSEvent.mouseLocation
+        dragStartWindowOrigin = frame.origin
+        stateBeforeDrag = stateMachine?.currentState
+        willBeginDrag?()
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard isDragging,
+              let startMouse = dragStartMouseLocation,
+              let startOrigin = dragStartWindowOrigin else {
+            return
+        }
+
+        let current = NSEvent.mouseLocation
+        let dx = current.x - startMouse.x
+        let dy = current.y - startMouse.y
+        setFrameOrigin(NSPoint(x: startOrigin.x + dx, y: startOrigin.y + dy))
+
+        if event.deltaX > 0.5 {
+            stateMachine?.setState(.runningRight)
+        } else if event.deltaX < -0.5 {
+            stateMachine?.setState(.runningLeft)
+        }
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard isDragging else { return }
+        isDragging = false
+        dragStartMouseLocation = nil
+        dragStartWindowOrigin = nil
+
+        // runningLeft/runningRight are transient motion states driven by drag/wander;
+        // if that's what we had before this drag started (e.g. a drag grabbed mid-wander),
+        // settle back to idle rather than freezing on a running pose.
+        let restoredState: PetState
+        if let previous = stateBeforeDrag, previous != .runningLeft, previous != .runningRight {
+            restoredState = previous
+        } else {
+            restoredState = .idle
+        }
+        stateBeforeDrag = nil
+        stateMachine?.setState(restoredState)
+
+        didEndDrag?(frame.origin)
     }
 }

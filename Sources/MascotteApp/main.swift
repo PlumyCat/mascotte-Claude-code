@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var toggleMenuItem: NSMenuItem?
     private var spriteEngine: SpriteEngine?
     private var stateMachine: StateMachine?
+    private var wanderController: WanderController?
     private var cycleTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -39,11 +40,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let machine = StateMachine(engine: engine, initialState: .waving)
         stateMachine = machine
+        window.stateMachine = machine
+
+        let wander = WanderController(
+            window: window,
+            stateMachine: machine,
+            fastMode: CommandLine.arguments.contains("--wander-fast")
+        )
+        wanderController = wander
+
+        window.willBeginDrag = { [weak wander] in
+            wander?.stop()
+        }
+        window.didEndDrag = { origin in
+            PositionStore.save(origin)
+        }
 
         setupStatusItem()
 
         if CommandLine.arguments.contains("--cycle") {
             startCycleMode(machine: machine)
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        if let origin = petWindow?.frame.origin {
+            PositionStore.save(origin)
         }
     }
 
