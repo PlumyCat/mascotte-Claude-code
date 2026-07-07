@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var spriteEngine: SpriteEngine?
     private var stateMachine: StateMachine?
     private var wanderController: WanderController?
+    private var sessionStore: SessionStore?
     private var cycleTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -60,6 +61,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if CommandLine.arguments.contains("--cycle") {
             startCycleMode(machine: machine)
+        } else {
+            let store = SessionStore { [weak machine] aggregate in
+                machine?.setState(aggregate)
+            }
+            store.start()
+            sessionStore = store
         }
     }
 
