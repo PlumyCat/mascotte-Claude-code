@@ -4,6 +4,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var petWindow: PetWindow?
     private var toggleMenuItem: NSMenuItem?
+    private var spriteEngine: SpriteEngine?
+    private var stateMachine: StateMachine?
+    private var cycleTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -15,16 +18,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .deletingLastPathComponent() // repo root
         let spriteURL = repoRoot.appendingPathComponent("pets/casquette/spritesheet.webp")
 
-        guard let sheet = SpriteSheet(url: spriteURL, columns: 8, rows: 9),
-              let idleFrame = sheet.cellImage(row: 0, column: 0) else {
+        guard let sheet = SpriteSheet(url: spriteURL, columns: 8, rows: 9) else {
             fatalError("Impossible de charger le spritesheet: \(spriteURL.path)")
         }
 
-        let window = PetWindow(image: idleFrame)
+        let cellSize = CGSize(width: sheet.cellWidth, height: sheet.cellHeight)
+        let window = PetWindow(cellSize: cellSize)
         window.orderFrontRegardless()
         petWindow = window
 
+        let engine = SpriteEngine(
+            layer: window.spriteView.layer!,
+            sheetImage: sheet.image,
+            columns: sheet.columns,
+            rows: sheet.rows,
+            initialRow: PetState.waving.row,
+            initialFrameCount: PetState.waving.frameCount
+        )
+        spriteEngine = engine
+
+        let machine = StateMachine(engine: engine, initialState: .waving)
+        stateMachine = machine
+
         setupStatusItem()
+
+        if CommandLine.arguments.contains("--cycle") {
+            startCycleMode(machine: machine)
+        }
+    }
+
+    private func startCycleMode(machine: StateMachine) {
+        let states = PetState.allCases
+        var index = 0
+
+        logCycleState(states[index])
+        machine.setState(states[index])
+
+        let timer = Timer(timeInterval: 3.5, repeats: true) { [weak self] _ in
+            index = (index + 1) % states.count
+            self?.logCycleState(states[index])
+            machine.setState(states[index])
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        cycleTimer = timer
+    }
+
+    private func logCycleState(_ state: PetState) {
+        FileHandle.standardError.write("cycle: \(state.rawValue)\n".data(using: .utf8)!)
     }
 
     private func setupStatusItem() {

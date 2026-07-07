@@ -20,15 +20,4 @@ struct SpriteSheet {
         self.cellWidth = cgImage.width / columns
         self.cellHeight = cgImage.height / rows
     }
-
-    func cellImage(row: Int, column: Int) -> CGImage? {
-        guard row >= 0, row < rows, column >= 0, column < columns else { return nil }
-        let rect = CGRect(
-            x: column * cellWidth,
-            y: row * cellHeight,
-            width: cellWidth,
-            height: cellHeight
-        )
-        return image.cropping(to: rect)
-    }
 }

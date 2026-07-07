@@ -1,9 +1,27 @@
 import AppKit
 
+final class SpriteView: NSView {
+    // Flipped so contentsRect's (0,0) is the sheet's top-left, matching row-major sheet layout.
+    override var isFlipped: Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
 final class PetWindow: NSPanel {
-    init(image: CGImage) {
-        let size = CGSize(width: image.width, height: image.height)
-        let rect = NSRect(origin: .zero, size: size)
+    let spriteView: SpriteView
+
+    init(cellSize: CGSize) {
+        let rect = NSRect(origin: .zero, size: cellSize)
+        let view = SpriteView(frame: rect)
+        self.spriteView = view
 
         super.init(
             contentRect: rect,
@@ -19,13 +37,7 @@ final class PetWindow: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .ignoresCycle, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
 
-        let imageView = NSImageView(frame: NSRect(origin: .zero, size: size))
-        imageView.image = NSImage(cgImage: image, size: size)
-        imageView.imageScaling = .scaleNone
-        imageView.wantsLayer = true
-        imageView.layer?.backgroundColor = .clear
-
-        contentView = imageView
+        contentView = view
 
         centerOnActiveScreen()
     }
