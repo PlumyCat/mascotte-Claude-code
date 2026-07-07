@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "run_dir": "/Users/ericfer/.codex/pet-runs/casquette",
+  "spritesheet": "/Users/ericfer/.codex/pet-runs/casquette/final/spritesheet.webp",
+  "validation": "/Users/ericfer/.codex/pet-runs/casquette/final/validation.json",
+  "contact_sheet": "/Users/ericfer/.codex/pet-runs/casquette/qa/contact-sheet.png",
+  "review": "/Users/ericfer/.codex/pet-runs/casquette/qa/review.json",
+  "package": "/Users/ericfer/.codex/pets/casquette"
+}
