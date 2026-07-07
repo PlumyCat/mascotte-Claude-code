@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var toggleMenuItem: NSMenuItem?
     private var spriteEngine: SpriteEngine?
     private var stateMachine: StateMachine?
+    private var sessionStore: SessionStore?
     private var cycleTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -44,6 +45,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if CommandLine.arguments.contains("--cycle") {
             startCycleMode(machine: machine)
+        } else {
+            let store = SessionStore { [weak machine] aggregate in
+                machine?.setState(aggregate)
+            }
+            store.start()
+            sessionStore = store
         }
     }
 

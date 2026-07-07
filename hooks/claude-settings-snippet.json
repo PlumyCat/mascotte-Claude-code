@@ -1,0 +1,59 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "<CHEMIN_ABSOLU_VERS_LE_REPO>/hooks/mascotte-hook.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "<CHEMIN_ABSOLU_VERS_LE_REPO>/hooks/mascotte-hook.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "<CHEMIN_ABSOLU_VERS_LE_REPO>/hooks/mascotte-hook.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "<CHEMIN_ABSOLU_VERS_LE_REPO>/hooks/mascotte-hook.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "<CHEMIN_ABSOLU_VERS_LE_REPO>/hooks/mascotte-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
