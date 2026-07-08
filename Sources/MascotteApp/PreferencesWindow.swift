@@ -14,6 +14,8 @@ final class PreferencesWindow: NSWindow {
 
     private var soundEnabledCheckbox: NSButton?
     private var movementSpeedControl: NSSegmentedControl?
+    private var petScaleSlider: NSSlider?
+    private var petScaleValueLabel: NSTextField?
 
     private init() {
         let contentRect = NSRect(x: 0, y: 0, width: 440, height: 320)
@@ -35,6 +37,9 @@ final class PreferencesWindow: NSWindow {
     func show() {
         soundEnabledCheckbox?.state = Preferences.shared.soundEnabled ? .on : .off
         movementSpeedControl?.selectedSegment = Self.segmentIndex(for: Preferences.shared.movementSpeed)
+        let scale = Preferences.shared.petScale
+        petScaleSlider?.doubleValue = scale
+        petScaleValueLabel?.stringValue = Self.formatScale(scale)
         makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -42,7 +47,7 @@ final class PreferencesWindow: NSWindow {
     private func makeTabView() -> NSTabView {
         let tabView = NSTabView(frame: NSRect(x: 0, y: 0, width: 440, height: 320))
         tabView.addTabViewItem(tab("Mouvement", movementTab()))
-        tabView.addTabViewItem(tab("Apparence", placeholder("Taille de la mascotte — à venir.")))
+        tabView.addTabViewItem(tab("Apparence", appearanceTab()))
         tabView.addTabViewItem(tab("Sons", soundsTab()))
         tabView.addTabViewItem(tab("Interaction", placeholder("Clic pour focus terminal — à venir.")))
         tabView.selectTabViewItem(at: 0)
@@ -86,6 +91,36 @@ final class PreferencesWindow: NSWindow {
         return container
     }
 
+    private func appearanceTab() -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 440, height: 290))
+
+        let title = NSTextField(labelWithString: "Taille de la mascotte")
+        title.frame = NSRect(x: 20, y: 250, width: 300, height: 20)
+        container.addSubview(title)
+
+        let scale = Preferences.shared.petScale
+
+        let slider = NSSlider(
+            value: scale,
+            minValue: Preferences.petScaleRange.lowerBound,
+            maxValue: Preferences.petScaleRange.upperBound,
+            target: self,
+            action: #selector(petScaleChanged(_:))
+        )
+        slider.frame = NSRect(x: 20, y: 220, width: 300, height: 24)
+        slider.isContinuous = true
+        container.addSubview(slider)
+        petScaleSlider = slider
+
+        let valueLabel = NSTextField(labelWithString: Self.formatScale(scale))
+        valueLabel.frame = NSRect(x: 330, y: 220, width: 60, height: 24)
+        valueLabel.textColor = .secondaryLabelColor
+        container.addSubview(valueLabel)
+        petScaleValueLabel = valueLabel
+
+        return container
+    }
+
     /// Segment order is Lent/Normal/Vif, matching `MovementSpeed`'s declaration order.
     private static func segmentIndex(for speed: MovementSpeed) -> Int {
         switch speed {
@@ -103,6 +138,15 @@ final class PreferencesWindow: NSWindow {
         default: speed = .normal
         }
         Preferences.shared.movementSpeed = speed
+    }
+
+    @objc private func petScaleChanged(_ sender: NSSlider) {
+        Preferences.shared.petScale = sender.doubleValue
+        petScaleValueLabel?.stringValue = Self.formatScale(sender.doubleValue)
+    }
+
+    private static func formatScale(_ scale: Double) -> String {
+        String(format: "%.1fx", scale)
     }
 
     private func soundsTab() -> NSView {

@@ -61,8 +61,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forName: .mascottePreferencesChanged,
             object: nil,
             queue: .main
-        ) { _ in
+        ) { [weak self] _ in
             FileHandle.standardError.write("preferences changed: soundEnabled=\(Preferences.shared.soundEnabled)\n".data(using: .utf8)!)
+            self?.petWindow?.applyScale(Preferences.shared.petScale)
         }
 
         if CommandLine.arguments.contains("--cycle") {

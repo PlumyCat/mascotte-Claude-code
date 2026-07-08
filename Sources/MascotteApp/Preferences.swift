@@ -24,6 +24,11 @@ enum MovementSpeed: String, CaseIterable {
 final class Preferences {
     static let shared = Preferences()
 
+    /// Valid range for `petScale`; enforced on both read and write so a
+    /// stray/out-of-range stored value (e.g. from a future format change)
+    /// can never size the pet window outside what the UI/drag logic expects.
+    static let petScaleRange: ClosedRange<Double> = 0.5...2.0
+
     private init() {}
 
     private let defaults = UserDefaults.standard
@@ -47,11 +52,15 @@ final class Preferences {
     }
 
     var petScale: Double {
-        get { defaults.object(forKey: Key.petScale) as? Double ?? 1.0 }
+        get { Self.clampScale(defaults.object(forKey: Key.petScale) as? Double ?? 1.0) }
         set {
-            defaults.set(newValue, forKey: Key.petScale)
+            defaults.set(Self.clampScale(newValue), forKey: Key.petScale)
             notifyChanged()
         }
+    }
+
+    private static func clampScale(_ value: Double) -> Double {
+        min(max(value, petScaleRange.lowerBound), petScaleRange.upperBound)
     }
 
     var soundEnabled: Bool {
