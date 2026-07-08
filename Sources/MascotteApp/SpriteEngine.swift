@@ -31,6 +31,9 @@ final class SpriteEngine {
 
         layer.contentsScale = 1.0
         layer.contentsGravity = .resize
+        // Pixel-art sheet: nearest-neighbor keeps it crisp when the window
+        // is scaled up via petScale instead of blurring with linear filtering.
+        layer.magnificationFilter = .nearest
         layer.masksToBounds = true
         // The sprite sheet is loaded once as `contents`; only `contentsRect` moves per frame,
         // so implicit CALayer animations must be disabled or frames visibly slide into each other.

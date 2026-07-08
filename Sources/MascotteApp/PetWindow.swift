@@ -22,13 +22,18 @@ final class PetWindow: NSPanel {
     var willBeginDrag: (() -> Void)?
     var didEndDrag: ((NSPoint) -> Void)?
 
+    /// The sprite's unscaled cell size (one spritesheet frame); the window
+    /// size at any given `petScale` is always this times the scale.
+    private let baseCellSize: CGSize
+
     private var dragStartMouseLocation: NSPoint?
     private var dragStartWindowOrigin: NSPoint?
     private var stateBeforeDrag: PetState?
     private var isDragging = false
 
     init(cellSize: CGSize) {
-        let rect = NSRect(origin: .zero, size: cellSize)
+        self.baseCellSize = cellSize
+        let rect = NSRect(origin: .zero, size: Self.scaledSize(baseCellSize: cellSize, scale: Preferences.shared.petScale))
         let view = SpriteView(frame: rect)
         self.spriteView = view
 
@@ -53,6 +58,29 @@ final class PetWindow: NSPanel {
         contentView = view
 
         setFrameOrigin(PositionStore.loadOrigin(windowSize: rect.size))
+    }
+
+    private static func scaledSize(baseCellSize: CGSize, scale: Double) -> CGSize {
+        CGSize(width: baseCellSize.width * scale, height: baseCellSize.height * scale)
+    }
+
+    /// Resizes the window to the given `petScale`, keeping the pet's on-screen
+    /// center point fixed (so it doesn't appear to jump), then reclamps the
+    /// origin into the current screen's `visibleFrame` so a size increase
+    /// never pushes it partially or fully off-screen.
+    func applyScale(_ scale: Double) {
+        let newSize = Self.scaledSize(baseCellSize: baseCellSize, scale: scale)
+        guard newSize != frame.size else { return }
+
+        let center = NSPoint(x: frame.midX, y: frame.midY)
+        var origin = NSPoint(x: center.x - newSize.width / 2, y: center.y - newSize.height / 2)
+
+        if let visible = (screen ?? NSScreen.main)?.visibleFrame {
+            origin.x = min(max(origin.x, visible.minX), max(visible.minX, visible.maxX - newSize.width))
+            origin.y = min(max(origin.y, visible.minY), max(visible.minY, visible.maxY - newSize.height))
+        }
+
+        setFrame(NSRect(origin: origin, size: newSize), display: true)
     }
 
     override func mouseDown(with event: NSEvent) {
