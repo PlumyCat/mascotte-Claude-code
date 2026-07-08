@@ -1,5 +1,16 @@
 import AppKit
 
+private extension MovementSpeed {
+    /// Wander speed for each setting. `.normal` matches the original hardcoded 60 px/s.
+    var pixelsPerSecond: CGFloat {
+        switch self {
+        case .slow: return 30.0
+        case .normal: return 60.0
+        case .brisk: return 120.0
+        }
+    }
+}
+
 /// Makes the pet occasionally wander a short distance while idle.
 ///
 /// Only ever acts while the state machine is idle, and any outside activity
@@ -18,8 +29,9 @@ final class WanderController {
     /// onStateChange echo isn't mistaken for an external interruption.
     private var isApplyingOwnState = false
 
-    private let pixelsPerSecond: CGFloat = 60.0
+    private var pixelsPerSecond: CGFloat
     private let tickInterval: TimeInterval = 1.0 / 60.0
+    private var preferencesObserver: NSObjectProtocol?
 
     init(
         window: PetWindow,
@@ -28,6 +40,7 @@ final class WanderController {
     ) {
         self.window = window
         self.stateMachine = stateMachine
+        self.pixelsPerSecond = Preferences.shared.movementSpeed.pixelsPerSecond
         if fastMode {
             self.minDelay = 3
             self.maxDelay = 6
@@ -40,8 +53,22 @@ final class WanderController {
             self?.handleStateChange(state)
         }
 
+        preferencesObserver = NotificationCenter.default.addObserver(
+            forName: .mascottePreferencesChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.pixelsPerSecond = Preferences.shared.movementSpeed.pixelsPerSecond
+        }
+
         if stateMachine.currentState == .idle {
             scheduleNextWander()
+        }
+    }
+
+    deinit {
+        if let preferencesObserver {
+            NotificationCenter.default.removeObserver(preferencesObserver)
         }
     }
 
@@ -109,13 +136,15 @@ final class WanderController {
         setState(direction > 0 ? .runningRight : .runningLeft)
 
         var traveled: CGFloat = 0
-        let stepDistance = pixelsPerSecond * CGFloat(tickInterval)
 
         let timer = Timer(timeInterval: tickInterval, repeats: true) { [weak self] timer in
             guard let self else {
                 timer.invalidate()
                 return
             }
+            // Re-read pixelsPerSecond every tick so a preference change applies
+            // to the walk already in flight, not just the next one.
+            let stepDistance = self.pixelsPerSecond * CGFloat(self.tickInterval)
             traveled += stepDistance
             let reachedTarget = traveled >= distance
             let newX = reachedTarget ? targetX : startX + direction * traveled

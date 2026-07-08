@@ -13,6 +13,7 @@ final class PreferencesWindow: NSWindow {
     static let shared = PreferencesWindow()
 
     private var soundEnabledCheckbox: NSButton?
+    private var movementSpeedControl: NSSegmentedControl?
 
     private init() {
         let contentRect = NSRect(x: 0, y: 0, width: 440, height: 320)
@@ -33,13 +34,14 @@ final class PreferencesWindow: NSWindow {
     /// first in case they changed elsewhere since it was last shown.
     func show() {
         soundEnabledCheckbox?.state = Preferences.shared.soundEnabled ? .on : .off
+        movementSpeedControl?.selectedSegment = Self.segmentIndex(for: Preferences.shared.movementSpeed)
         makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
     private func makeTabView() -> NSTabView {
         let tabView = NSTabView(frame: NSRect(x: 0, y: 0, width: 440, height: 320))
-        tabView.addTabViewItem(tab("Mouvement", placeholder("Vitesse de déplacement (lent / normal / rapide) — à venir.")))
+        tabView.addTabViewItem(tab("Mouvement", movementTab()))
         tabView.addTabViewItem(tab("Apparence", placeholder("Taille de la mascotte — à venir.")))
         tabView.addTabViewItem(tab("Sons", soundsTab()))
         tabView.addTabViewItem(tab("Interaction", placeholder("Clic pour focus terminal — à venir.")))
@@ -61,6 +63,46 @@ final class PreferencesWindow: NSWindow {
         label.textColor = .secondaryLabelColor
         container.addSubview(label)
         return container
+    }
+
+    private func movementTab() -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 440, height: 290))
+
+        let label = NSTextField(labelWithString: "Vitesse de déplacement")
+        label.frame = NSRect(x: 20, y: 250, width: 250, height: 24)
+        container.addSubview(label)
+
+        let control = NSSegmentedControl(
+            labels: ["Lent", "Normal", "Vif"],
+            trackingMode: .selectOne,
+            target: self,
+            action: #selector(movementSpeedChanged(_:))
+        )
+        control.frame = NSRect(x: 20, y: 220, width: 240, height: 24)
+        control.selectedSegment = Self.segmentIndex(for: Preferences.shared.movementSpeed)
+        container.addSubview(control)
+        movementSpeedControl = control
+
+        return container
+    }
+
+    /// Segment order is Lent/Normal/Vif, matching `MovementSpeed`'s declaration order.
+    private static func segmentIndex(for speed: MovementSpeed) -> Int {
+        switch speed {
+        case .slow: return 0
+        case .normal: return 1
+        case .brisk: return 2
+        }
+    }
+
+    @objc private func movementSpeedChanged(_ sender: NSSegmentedControl) {
+        let speed: MovementSpeed
+        switch sender.selectedSegment {
+        case 0: speed = .slow
+        case 2: speed = .brisk
+        default: speed = .normal
+        }
+        Preferences.shared.movementSpeed = speed
     }
 
     private func soundsTab() -> NSView {
