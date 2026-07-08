@@ -13,6 +13,8 @@ final class PreferencesWindow: NSWindow {
     static let shared = PreferencesWindow()
 
     private var soundEnabledCheckbox: NSButton?
+    private var soundVolumeSlider: NSSlider?
+    private var soundTriggerCheckboxes: [PetState: NSButton] = [:]
 
     private init() {
         let contentRect = NSRect(x: 0, y: 0, width: 440, height: 320)
@@ -33,6 +35,11 @@ final class PreferencesWindow: NSWindow {
     /// first in case they changed elsewhere since it was last shown.
     func show() {
         soundEnabledCheckbox?.state = Preferences.shared.soundEnabled ? .on : .off
+        soundVolumeSlider?.doubleValue = Preferences.shared.soundVolume
+        let triggers = Preferences.shared.soundTriggers
+        for (state, checkbox) in soundTriggerCheckboxes {
+            checkbox.state = triggers.contains(state) ? .on : .off
+        }
         makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -76,10 +83,63 @@ final class PreferencesWindow: NSWindow {
         container.addSubview(checkbox)
         soundEnabledCheckbox = checkbox
 
+        let volumeLabel = NSTextField(labelWithString: "Volume")
+        volumeLabel.frame = NSRect(x: 20, y: 210, width: 100, height: 20)
+        container.addSubview(volumeLabel)
+
+        let slider = NSSlider(
+            value: Preferences.shared.soundVolume,
+            minValue: 0,
+            maxValue: 1,
+            target: self,
+            action: #selector(changeSoundVolume(_:))
+        )
+        slider.frame = NSRect(x: 20, y: 190, width: 300, height: 20)
+        container.addSubview(slider)
+        soundVolumeSlider = slider
+
+        let triggersLabel = NSTextField(labelWithString: "Jouer un son sur :")
+        triggersLabel.frame = NSRect(x: 20, y: 150, width: 250, height: 20)
+        container.addSubview(triggersLabel)
+
+        let triggerOptions: [(PetState, String)] = [
+            (.waiting, "En attente (waiting)"),
+            (.review, "Revue (review)"),
+            (.running, "En cours (running)"),
+        ]
+
+        for (index, option) in triggerOptions.enumerated() {
+            let (state, title) = option
+            let triggerCheckbox = NSButton(
+                checkboxWithTitle: title,
+                target: self,
+                action: #selector(toggleSoundTrigger(_:))
+            )
+            triggerCheckbox.frame = NSRect(x: 20, y: 125 - (index * 25), width: 300, height: 24)
+            triggerCheckbox.state = Preferences.shared.soundTriggers.contains(state) ? .on : .off
+            container.addSubview(triggerCheckbox)
+            soundTriggerCheckboxes[state] = triggerCheckbox
+        }
+
         return container
     }
 
     @objc private func toggleSoundEnabled(_ sender: NSButton) {
         Preferences.shared.soundEnabled = sender.state == .on
+    }
+
+    @objc private func changeSoundVolume(_ sender: NSSlider) {
+        Preferences.shared.soundVolume = sender.doubleValue
+    }
+
+    @objc private func toggleSoundTrigger(_ sender: NSButton) {
+        guard let state = soundTriggerCheckboxes.first(where: { $0.value === sender })?.key else { return }
+        var triggers = Preferences.shared.soundTriggers
+        if sender.state == .on {
+            triggers.insert(state)
+        } else {
+            triggers.remove(state)
+        }
+        Preferences.shared.soundTriggers = triggers
     }
 }

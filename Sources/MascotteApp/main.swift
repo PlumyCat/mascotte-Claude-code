@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var stateMachine: StateMachine?
     private var wanderController: WanderController?
     private var sessionStore: SessionStore?
+    private var soundPlayer: SoundPlayer?
     private var cycleTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -57,13 +58,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         setupStatusItem()
 
-        NotificationCenter.default.addObserver(
-            forName: .mascottePreferencesChanged,
-            object: nil,
-            queue: .main
-        ) { _ in
-            FileHandle.standardError.write("preferences changed: soundEnabled=\(Preferences.shared.soundEnabled)\n".data(using: .utf8)!)
-        }
+        let sound = SoundPlayer()
+        sound.attach(to: machine)
+        soundPlayer = sound
 
         if CommandLine.arguments.contains("--cycle") {
             startCycleMode(machine: machine)
