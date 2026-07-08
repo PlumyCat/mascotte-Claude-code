@@ -1,9 +1,11 @@
 import AppKit
+import ServiceManagement
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var petWindow: PetWindow?
     private var toggleMenuItem: NSMenuItem?
+    private var launchAtLoginMenuItem: NSMenuItem?
     private var spriteEngine: SpriteEngine?
     private var stateMachine: StateMachine?
     private var wanderController: WanderController?
@@ -14,14 +16,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         NSApp.activate(ignoringOtherApps: true)
 
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent() // MascotteApp
-            .deletingLastPathComponent() // Sources
-            .deletingLastPathComponent() // repo root
-        let spriteURL = repoRoot.appendingPathComponent("pets/casquette/spritesheet.webp")
+        let spriteURL = Self.resolveSpritesheetURL()
 
         guard let sheet = SpriteSheet(url: spriteURL, columns: 8, rows: 9) else {
-            fatalError("Impossible de charger le spritesheet: \(spriteURL.path)")
+            Self.presentFatalErrorAndExit("Impossible de charger le spritesheet:\n\(spriteURL.path)")
         }
 
         let cellSize = CGSize(width: sheet.cellWidth, height: sheet.cellHeight)
@@ -96,6 +94,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         FileHandle.standardError.write("cycle: \(state.rawValue)\n".data(using: .utf8)!)
     }
 
+    /// Resolves the spritesheet location: inside `Mascotte.app/Contents/Resources`
+    /// when running as a bundled app, falling back to the repo's `pets/` tree
+    /// for `swift run` in development (where `Bundle.main` has no real bundle).
+    private static func resolveSpritesheetURL() -> URL {
+        if let resourceURL = Bundle.main.resourceURL {
+            let bundled = resourceURL.appendingPathComponent("spritesheet.webp")
+            if FileManager.default.fileExists(atPath: bundled.path) {
+                return bundled
+            }
+        }
+
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // MascotteApp
+            .deletingLastPathComponent() // Sources
+            .deletingLastPathComponent() // repo root
+        return repoRoot.appendingPathComponent("pets/casquette/spritesheet.webp")
+    }
+
+    /// Shows a blocking alert then terminates the process cleanly, used in place
+    /// of `fatalError` for recoverable-looking-but-fatal startup failures.
+    private static func presentFatalErrorAndExit(_ message: String) -> Never {
+        let alert = NSAlert()
+        alert.messageText = "Mascotte ne peut pas démarrer"
+        alert.informativeText = message
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Quitter")
+        alert.runModal()
+        exit(1)
+    }
+
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.autosaveName = "MascotteAppStatusItem"
@@ -115,6 +143,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        let launchAtLoginItem = NSMenuItem(
+            title: "Lancer au login",
+            action: #selector(toggleLaunchAtLogin),
+            keyEquivalent: ""
+        )
+        launchAtLoginItem.target = self
+        launchAtLoginItem.state = Self.launchAtLoginService.status == .enabled ? .on : .off
+        menu.addItem(launchAtLoginItem)
+        launchAtLoginMenuItem = launchAtLoginItem
+
+        menu.addItem(.separator())
+
         let quitItem = NSMenuItem(title: "Quitter", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quitItem)
 
@@ -131,6 +171,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.orderFrontRegardless()
             toggleMenuItem?.title = "Masquer"
         }
+    }
+
+    private static var launchAtLoginService: SMAppService { .mainApp }
+
+    @objc private func toggleLaunchAtLogin() {
+        let service = Self.launchAtLoginService
+        do {
+            if service.status == .enabled {
+                try service.unregister()
+            } else {
+                try service.register()
+            }
+        } catch {
+            FileHandle.standardError.write("launch-at-login toggle failed: \(error)\n".data(using: .utf8)!)
+        }
+        launchAtLoginMenuItem?.state = service.status == .enabled ? .on : .off
     }
 }
 
