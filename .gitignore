@@ -2,3 +2,6 @@
 .build/
 *.xcodeproj
 dist/
+dist/
+.build/
+*.bak.*
