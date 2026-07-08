@@ -56,11 +56,28 @@ print("\t".join([str(d.get("session_id") or ""), str(d.get("hook_event_name") or
     local tmp
     tmp="$(mktemp "$STATE_DIR/.tmp.XXXXXX" 2>/dev/null)" || return 0
 
-    # Échappement minimal (backslash puis guillemet) pour cwd dans le JSON écrit à la main.
+    # Échappement minimal (backslash puis guillemet) pour les chaînes écrites à la main dans le JSON.
     local cwd_escaped="${cwd//\\/\\\\}"
     cwd_escaped="${cwd_escaped//\"/\\\"}"
 
-    printf '{"state":"%s","ts":%s,"cwd":"%s"}' "$state" "$ts" "$cwd_escaped" >"$tmp" 2>/dev/null
+    # Identification du terminal hôte, pour le focus-au-clic (S-10). TERM_PROGRAM
+    # et TERM_SESSION_ID viennent de l'environnement du hook (hérité du terminal
+    # qui a lancé Claude Code), pas du JSON stdin.
+    local term_program="${TERM_PROGRAM:-}"
+    local term_program_escaped="${term_program//\\/\\\\}"
+    term_program_escaped="${term_program_escaped//\"/\\\"}"
+
+    local term_session_id="${TERM_SESSION_ID:-}"
+    local term_session_id_escaped="${term_session_id//\\/\\\\}"
+    term_session_id_escaped="${term_session_id_escaped//\"/\\\"}"
+
+    local extra_fields=""
+    if [ -n "$term_session_id" ]; then
+        extra_fields=",\"term_session_id\":\"$term_session_id_escaped\""
+    fi
+
+    printf '{"state":"%s","ts":%s,"cwd":"%s","term_program":"%s"%s}' \
+        "$state" "$ts" "$cwd_escaped" "$term_program_escaped" "$extra_fields" >"$tmp" 2>/dev/null
     mv -f "$tmp" "$file" 2>/dev/null
 
     return 0

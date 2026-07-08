@@ -21,6 +21,13 @@ final class PetWindow: NSPanel {
 
     var willBeginDrag: (() -> Void)?
     var didEndDrag: ((NSPoint) -> Void)?
+    /// Fired on mouseUp when the total mouse movement since mouseDown stayed
+    /// under `clickDistanceThreshold` — a simple click, as opposed to a drag.
+    var onClick: (() -> Void)?
+
+    /// Below this many points of total mouse movement between mouseDown and
+    /// mouseUp, the gesture counts as a click rather than a drag.
+    private let clickDistanceThreshold: CGFloat = 4.0
 
     private var dragStartMouseLocation: NSPoint?
     private var dragStartWindowOrigin: NSPoint?
@@ -85,6 +92,8 @@ final class PetWindow: NSPanel {
     override func mouseUp(with event: NSEvent) {
         guard isDragging else { return }
         isDragging = false
+
+        let startMouseLocation = dragStartMouseLocation
         dragStartMouseLocation = nil
         dragStartWindowOrigin = nil
 
@@ -101,5 +110,13 @@ final class PetWindow: NSPanel {
         stateMachine?.setState(restoredState)
 
         didEndDrag?(frame.origin)
+
+        if let startMouseLocation {
+            let current = NSEvent.mouseLocation
+            let distance = hypot(current.x - startMouseLocation.x, current.y - startMouseLocation.y)
+            if distance < clickDistanceThreshold {
+                onClick?()
+            }
+        }
     }
 }
