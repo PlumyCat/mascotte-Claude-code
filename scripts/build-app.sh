@@ -33,6 +33,16 @@ cp "$BUILT_BINARY" "$MACOS_DIR/$EXECUTABLE_NAME"
 cp "$PET_DIR/spritesheet.webp" "$RESOURCES_DIR/spritesheet.webp"
 cp "$PET_DIR/pet.json" "$RESOURCES_DIR/pet.json"
 
+# Notification sounds: SoundPlayer.resolveSoundURL looks them up directly in
+# Contents/Resources (e.g. "default-notify.aiff"), so flatten them there.
+SOUNDS_DIR="$REPO_ROOT/Sources/MascotteApp/Resources/sounds"
+if [ -d "$SOUNDS_DIR" ]; then
+    for sound in "$SOUNDS_DIR"/*.aiff; do
+        [ -e "$sound" ] || continue
+        cp "$sound" "$RESOURCES_DIR/$(basename "$sound")"
+    done
+fi
+
 cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
