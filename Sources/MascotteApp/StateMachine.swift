@@ -7,8 +7,11 @@ final class StateMachine {
 
     /// Fired whenever the current state changes, including auto-transitions
     /// back to idle. Lets observers (e.g. WanderController) know when to
-    /// start/stop without polling `currentState`.
+    /// start/stop without polling `currentState`. Kept as a single slot for
+    /// the primary observer; use `addObserver` for any additional one so
+    /// nobody accidentally overwrites another's closure.
     var onStateChange: ((PetState) -> Void)?
+    private var additionalObservers: [(PetState) -> Void] = []
 
     init(engine: SpriteEngine, initialState: PetState = .waving) {
         self.engine = engine
@@ -20,6 +23,13 @@ final class StateMachine {
         applyState(state)
     }
 
+    /// Registers an extra observer without disturbing `onStateChange`. Only
+    /// future transitions are delivered — never the state the machine is
+    /// already in at registration time.
+    func addObserver(_ observer: @escaping (PetState) -> Void) {
+        additionalObservers.append(observer)
+    }
+
     private func applyState(_ state: PetState) {
         pendingTransition?.cancel()
         pendingTransition = nil
@@ -28,6 +38,9 @@ final class StateMachine {
         engine.setRow(state.row, frameCount: state.frameCount)
         scheduleAutoTransition(for: state)
         onStateChange?(state)
+        for observer in additionalObservers {
+            observer(state)
+        }
     }
 
     private func scheduleAutoTransition(for state: PetState) {
