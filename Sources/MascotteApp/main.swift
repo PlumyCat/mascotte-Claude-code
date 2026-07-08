@@ -57,6 +57,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         setupStatusItem()
 
+        NotificationCenter.default.addObserver(
+            forName: .mascottePreferencesChanged,
+            object: nil,
+            queue: .main
+        ) { _ in
+            FileHandle.standardError.write("preferences changed: soundEnabled=\(Preferences.shared.soundEnabled)\n".data(using: .utf8)!)
+        }
+
         if CommandLine.arguments.contains("--cycle") {
             startCycleMode(machine: machine)
         } else {
@@ -155,6 +163,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        let preferencesItem = NSMenuItem(title: "Réglages…", action: #selector(openPreferences), keyEquivalent: ",")
+        preferencesItem.target = self
+        menu.addItem(preferencesItem)
+
+        menu.addItem(.separator())
+
         let quitItem = NSMenuItem(title: "Quitter", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quitItem)
 
@@ -174,6 +188,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static var launchAtLoginService: SMAppService { .mainApp }
+
+    @objc private func openPreferences() {
+        PreferencesWindow.shared.show()
+    }
 
     @objc private func toggleLaunchAtLogin() {
         let service = Self.launchAtLoginService
