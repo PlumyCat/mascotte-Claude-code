@@ -55,6 +55,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.didEndDrag = { origin in
             PositionStore.save(origin)
         }
+        window.onClick = {
+            TerminalFocusService.focusMostRelevantTerminal()
+        }
 
         setupStatusItem()
 

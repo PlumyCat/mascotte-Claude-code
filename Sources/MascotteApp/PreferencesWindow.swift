@@ -1,9 +1,9 @@
 import AppKit
 
 /// The "Réglages Mascotte" window: a single shared instance with one tab per
-/// settings theme (Mouvement / Apparence / Sons / Interaction). Most tabs are
-/// placeholders for now — only the "Sons" tab has a real control, proving the
-/// window applies changes through `Preferences` end to end.
+/// settings theme (Mouvement / Apparence / Sons / Interaction). "Mouvement"
+/// and "Apparence" are still placeholders; "Sons" and "Interaction" have real
+/// controls wired through `Preferences` end to end.
 ///
 /// `isReleasedWhenClosed = false` keeps this instance alive after the user
 /// closes it, so reopening from the menu reactivates the same window instead
@@ -18,6 +18,7 @@ final class PreferencesWindow: NSWindow {
     private var petScaleValueLabel: NSTextField?
     private var soundVolumeSlider: NSSlider?
     private var soundTriggerCheckboxes: [PetState: NSButton] = [:]
+    private var clickToFocusTerminalCheckbox: NSButton?
 
     private init() {
         let contentRect = NSRect(x: 0, y: 0, width: 440, height: 320)
@@ -47,6 +48,7 @@ final class PreferencesWindow: NSWindow {
         for (state, checkbox) in soundTriggerCheckboxes {
             checkbox.state = triggers.contains(state) ? .on : .off
         }
+        clickToFocusTerminalCheckbox?.state = Preferences.shared.clickToFocusTerminal ? .on : .off
         makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -56,7 +58,7 @@ final class PreferencesWindow: NSWindow {
         tabView.addTabViewItem(tab("Mouvement", movementTab()))
         tabView.addTabViewItem(tab("Apparence", appearanceTab()))
         tabView.addTabViewItem(tab("Sons", soundsTab()))
-        tabView.addTabViewItem(tab("Interaction", placeholder("Clic pour focus terminal — à venir.")))
+        tabView.addTabViewItem(tab("Interaction", interactionTab()))
         tabView.selectTabViewItem(at: 0)
         return tabView
     }
@@ -227,5 +229,25 @@ final class PreferencesWindow: NSWindow {
             triggers.remove(state)
         }
         Preferences.shared.soundTriggers = triggers
+    }
+
+    private func interactionTab() -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 440, height: 290))
+
+        let checkbox = NSButton(
+            checkboxWithTitle: "Clic sur la mascotte = focus du terminal",
+            target: self,
+            action: #selector(toggleClickToFocusTerminal(_:))
+        )
+        checkbox.frame = NSRect(x: 20, y: 250, width: 400, height: 24)
+        checkbox.state = Preferences.shared.clickToFocusTerminal ? .on : .off
+        container.addSubview(checkbox)
+        clickToFocusTerminalCheckbox = checkbox
+
+        return container
+    }
+
+    @objc private func toggleClickToFocusTerminal(_ sender: NSButton) {
+        Preferences.shared.clickToFocusTerminal = sender.state == .on
     }
 }
